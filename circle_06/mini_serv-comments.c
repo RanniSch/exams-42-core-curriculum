@@ -1,20 +1,22 @@
-#include <sys/socket.h> 
-#include <stdio.h>
-#include <unistd.h>
+#include <sys/socket.h> 		// socket(); libary for socket web server
+#include <stdio.h>				// sprintf(), NULL (This macro is the value of a null pointer constant)
+#include <unistd.h>				// write()
 #include <string.h>				// bzero()
-#include <stdlib.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#include <stdlib.h>				// atoi(), exit(), NULL
+#include <netinet/in.h>			// Internet Protocol family; defines the sockaddr_in structure
+#include <netdb.h>				// definitions for network database operations; it may make available the type in_addr_t as defined in <netinet/in.h>
 
-typedef struct s_client
+// s_client = name if the struct, t_client = data type of the struct
+typedef struct s_client			// struct s_client is a structure definition. A user-defined data type that allows grouping variables of different types together.
 {
-	int id;
-	char msg[1024];				// Maximum number of client connections allowed
-}				t_client;
+	int id;						// This member is an integer and can be used to store any integer value related to the 'client'.
+	/** or [100000] if not passing **/
+	char msg[1024];				// This member is an array of characters (a string) with a size of 1024 characters: Maximum number of client connections allowed
+}				t_client;	// typedef struct creates a type alias t_client for the structure s_client, so instead of writing struct s_client to declare a variable of this structure type, you can simply write t_client.
 
 t_client	clients[1024];				// Array to store client socket descriptors								
 
-// File descriptor sets: File descriptor sets for tracking socket activity
+// fd_set is a struct representing a filedescriptor; File descriptor sets for tracking socket activity; File descriptor provide low-level interface to input and output operations.
 fd_set		writeFds;
 fd_set		readFds;
 fd_set		active;
@@ -35,11 +37,12 @@ void	ft_error(char *string)
 	exit(1);										// Terminate the program with a non-zero status code	
 }
 
-// This part is reusing the send utility for each section.
+// This part is reusing the send utility for each section
 void	send_all(int fd)
 {
 	for (int i = 0; i <= fdMax; i++)
-		if (FD_ISSET(i, &writeFds) && i != fd)
+		// FD_ISSET returns a non-zero value if the bit for the file descriptor i is set in the file descriptor set pointed to by writeFds, and 0 otherwise
+		if (FD_ISSET(i, &writeFds) && i != fd)		// send the message to everyone but fd = connfd, because connfd is the one sending it
 			send(i, bufferWrite, strlen(bufferWrite), 0);
 }
 
@@ -48,78 +51,93 @@ int main(int argc, char **argv)
 	if (argc != 2)									// Check if the number of command line arguments is incorrect
 		ft_error("Wrong number of arguments");		// Print an error message with ft_error
 
-	// Create the server socket
-	int socketfd = socket(AF_INET, SOCK_STREAM, 0);				// Create a socket with IPv4 addressing and TCP protocol
+	// Create the server socket/a socket filedescriptor
+	// domain: AF_INET specifies that we want to connect hosts through ipv4
+	// communicaton type: SOCK_STREAM specifies that we use TCP/IP protocol for communication
+	// protocol: value of the protocol we use. here its 0 for TCP/IP
+	// socket() returns the new socketfd or -1 for error
+	int socketfd = socket(AF_INET, SOCK_STREAM, 0);		// Create a socket with IPv4 addressing and TCP protocol
 	if (socketfd < 0)				// Check if socket creation failed			
-		ft_error(NULL);								// Print an error message with ft_error
+		ft_error(NULL);				// Print an error message with ft_error
 	
 	// Initialise the active sockets set
-	FD_ZERO(&active);				// Clear the set of active sockets
-	bzero(&clients, sizeof(clients));				// place in the sizeof 'clients' zero-valued bytes in the area pointed to by '&clients'
-	fdMax = socketfd;				// Variable to track the maximum socket descriptor
-	FD_SET(socketfd, &active);		// Add the server socket to the set
+	FD_ZERO(&active);				// Clear the set of active sockets, because it sets the active (back) to zero. 'FD_ZERO' initializes the file descriptor set active to have zero bits for all file descriptors.
+	bzero(&clients, sizeof(clients));	// initialize the t_clients struct clients with all 0's to prevent certain segfaults, by placing in the sizeof 'clients' zero-valued bytes in the area pointed to by '&clients'
+	fdMax = socketfd;				// update fdMax to our newly created socket (Variable to track the maximum socket descriptor)
+	FD_SET(socketfd, &active);		// Add the newly created server socket to the set of active. 'FD_SET' sets the bit for the file descriptor socketfd in the file descriptor set active.
 
 	// Set up the server address
-	struct sockaddr_in  serveraddr;				// Structure to hold the server address
-	socklen_t           len;
-	bzero(&serveraddr, sizeof(serveraddr));	// place in the sizeof 'serveraddr' zero-valued bytes in the area pointed to by '&serveraddr'; probably similar to struct sockaddr_in serveraddr = {0};
+	// sockaddr_in structure is used to store addresses for the Internet protocol family
+	struct sockaddr_in  serveraddr;		// struct sockaddr_in is a datastructure for information about an Ip-address (Structure to hold the server address)
+	socklen_t           len;			// socklen_t: is an int specifying the size of a sockaddr_ -> from the sys/socket.h libary
+	bzero(&serveraddr, sizeof(serveraddr));	// set everything to zero in the struct to prevent segfaults by placing in the sizeof 'serveraddr' zero-valued bytes in the area pointed to by '&serveraddr'
 
+	// the sockaddr_in structure includes the members: sin_family, sin_addr, sin_port
+	// s_addr is member of the in_addr structure which is an unsigned integral type of exactly 32 bits
 	serveraddr.sin_family = AF_INET;		// Set address family to IPv4
-	/** check for 2130706433, as it has to stand for this machine. Instead INADDR_LOOPBACK could be an option **/
-	serveraddr.sin_addr.s_addr = htonl(2130706433);		// Set the IP address to localhost   
-	serveraddr.sin_port = htons(atoi(argv[1]));		// Set the port number from the command line argument
+	serveraddr.sin_addr.s_addr = htonl(2130706433);		// Set the IP address to localhost. Given in main, is 127.0.0.1 in network bytes; htonl converts a 32bit to network bytes. Instead INADDR_LOOPBACK could be an option
+	serveraddr.sin_port = htons(atoi(argv[1]));		// Set the port number from the command line argument and converts a 16bit to network bytes short
 
-	// Bind the server socket to the specified address
+	// bind the newly created server socket to the IP (to the specified address)
 	if ((bind(socketfd, (const struct sockaddr *) &serveraddr, sizeof(serveraddr))) < 0)
 		ft_error(NULL);		// if binding fails: Print an error message with ft_error
 
-	// Listen for incoming connections
-	if (listen(socketfd, 10) < 0)		// 10 are 'MAX_CLIENTS', others have defined it on 128
+	// Putting the socket into listening mode, to listen for incoming connections. Now its waiting for a client to connect
+	// 10 defines the max. amount of clients that can be in queue waiting for a connection to the server.
+	if (listen(socketfd, 10) < 0)		// 10 are 'MAX_CLIENTS' (others have defined it to 128)
 		ft_error(NULL);		// if listening fails: Print an error message with ft_error
 
 	while(1)
 	{
 		// Wait for activity on the sockets
-		readFds = writeFds = active;				// Copy the active sockets 'set' for use with select()
+		readFds = writeFds = active;				// Copy the active sockets set for use with select()
+		// select(highest possible number of fds to check, set of fds that could be possibly reading, set of fds that could possibly be writing, NULL, NULL)
+		// select(): can only monitor filedescriptors lower than whats specified by fdMax + 1
+		// readfds and writefds: are fildescriptor sets that contain the fildescriptors that being monitored to check if they are ready for the corresponding action (reading or writing)
+		// returns -1 on error or the number of fds that are in the fds-sets and are performing an operation (read,write or execption)
 		if (select(fdMax + 1, &readFds, &writeFds, NULL, NULL) < 0)
 			continue;		// if select() fails: jumps directly to while(1), so no break, but the input is ignored. 
 		
 		// Check each socket for activity
-		for(int fdI = 0; fdI <= fdMax; fdI++)
+		for(int fdI = 0; fdI <= fdMax; fdI++)	// go thru all fds we have and check if one of them is being used for read-opertion. If it is and it is also the sockfd then
 		{
 			if (socketfd < 0)
 				ft_error(NULL);
-			if (FD_ISSET(fdI, &readFds) && fdI == socketfd)		// fdI == socketfd checks if the activity is on the server socket
+			// FD_ISSET: checks if the fd is in the fd-set: Returns a non-zero value if the bit for the file descriptor fdI is set in the file descriptor set pointed to by readFds, and 0 otherwise
+			if (FD_ISSET(fdI, &readFds) && fdI == socketfd)	// a new client enters (fdI == socketfd checks if the activity is on the server socket)
 			{
 				// This is where we accept connections; new client connection
-				int connfd = accept(socketfd, (struct sockaddr *)&serveraddr, &len);		// Accept a new client connection
+				// accept() returns a new sockfd for the connection or -1 on error
+				int connfd = accept(socketfd, (struct sockaddr *)&serveraddr, &len);	// Accept 'accept()' a new client connection. It extracts the first connection request from the queue of the input socket
 				if (connfd < 0)
 					continue;		// if accepting fails: jumps directly to for(int fdI = 0; fdI <= fdMax; fdI++), so no break, but the input is ignored.
 				
 				// Add the new client socket to the active set
-				fdMax = connfd > fdMax ? connfd : fdMax;		// Update the maximum socket descriptor
+				fdMax = connfd > fdMax ? connfd : fdMax;		// Update the maximum socket descriptor; if connfd > fdMax -> connfd is assigned to fdMax, else fdMax
 				clients[connfd].id = idNext++;		// Store the client socket for future reference; Add the client socket to the array	
 				FD_SET(connfd, &active);		// Add the client socket to the set of active sockets
 				
-				// Send a welcome message to the client
+				// Send a welcome message to the client; sprintf() sends formatted output to a string
 				sprintf(bufferWrite, "server: client %d just arrived\n", clients[connfd].id);		// Prepare the welcome message
 				send_all(connfd);		// Send the welcome message to the client with send_all()
 				break;
 			}
-			if (FD_ISSET(fdI, &readFds) && fdI != socketfd)			// if the if before does not apply: if the activity is not on the server socket
+			// when its not sockfd but another client
+			if (FD_ISSET(fdI, &readFds) && fdI != socketfd)	// (if the if before does not apply: if the activity is not on the server socket)
 			{
 				// Data received from a client
-				/** check for 65536. Instead sizeof(bufferRead) - 1 could be an option **/
-				int res = recv(fdI, bufferRead, 65536, 0);		// Receive data from the client
+				// recv(): reads data from a socket and returns the number of bytes read or -1 on error or 0 if connections is closed
+				// 65536: common max for packet size of network protocols
+				int res = recv(fdI, bufferRead, 65536, 0);		// Receive data from the client (Instead 65536 sizeof(bufferRead) - 1 could be an option)
 				if (res <= 0)
 				{
 					// Client disconnected
 					sprintf(bufferWrite, "server: client %d just left\n", clients[fdI].id);		// Prepare the disconnection message
-					send_all(fdI);				// Send the disconneczion message to the client with send_all()
+					send_all(fdI);				// Send the disconnecion message to the client with send_all()
 					
 					// Close the socket and remove it from the active set
-					FD_CLR(fdI, &active);		// Remove the client socket from the set of active sockets
-					close(fdI);		// Close the client socket
+					FD_CLR(fdI, &active);		// Remove the client socket from the set of active sockets. It clears the fd from the fd-set
+					close(fdI);		// Close the client socket by closing the fd
 					break;
 				}
 				else
