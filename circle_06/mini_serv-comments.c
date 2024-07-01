@@ -1,4 +1,4 @@
-#include <sys/socket.h> 		// socket(); libary for socket web server
+#include <sys/socket.h> 		// socket(), send(), bind(), listen(); libary for socket web server
 #include <stdio.h>				// sprintf(), NULL (This macro is the value of a null pointer constant)
 #include <unistd.h>				// write()
 #include <string.h>				// bzero()
@@ -43,7 +43,8 @@ void	send_all(int fd)
 	for (int i = 0; i <= fdMax; i++)
 		// FD_ISSET returns a non-zero value if the bit for the file descriptor i is set in the file descriptor set pointed to by writeFds, and 0 otherwise
 		if (FD_ISSET(i, &writeFds) && i != fd)		// send the message to everyone but fd = connfd, because connfd is the one sending it
-			send(i, bufferWrite, strlen(bufferWrite), 0);
+			// send() shall initiate transmission of a message from the specified socket to its peer. It sends a message only when the socket is connected
+			send(i, bufferWrite, strlen(bufferWrite), 0);	// i: Specifies the socket file descriptor; bufferWrite: Points to the buffer containing the message to send; Specifies the length of the message in bytes; type of message transmission
 }
 
 int main(int argc, char **argv)
@@ -51,12 +52,11 @@ int main(int argc, char **argv)
 	if (argc != 2)									// Check if the number of command line arguments is incorrect
 		ft_error("Wrong number of arguments");		// Print an error message with ft_error
 
-	// Create the server socket/a socket filedescriptor
-	// domain: AF_INET specifies that we want to connect hosts through ipv4
-	// communicaton type: SOCK_STREAM specifies that we use TCP/IP protocol for communication
-	// protocol: value of the protocol we use. here its 0 for TCP/IP
-	// socket() returns the new socketfd or -1 for error
-	int socketfd = socket(AF_INET, SOCK_STREAM, 0);		// Create a socket with IPv4 addressing and TCP protocol
+	// Create the server socket/create an endpoint for communication
+	// AF_INET: Specifies the communications domain in which a socket is to be created (we want to connect hosts through ipv4)
+	// SOCK_STREAM: Specifies the type of socket to be created (we use TCP/IP protocol for communication)
+	// 0: Specifies a particular protocol to be used with the socket (it's 0 for TCP/IP)
+	int socketfd = socket(AF_INET, SOCK_STREAM, 0);		// Create a socket with IPv4 addressing and TCP protocol and returns the new socketfd or -1 for error
 	if (socketfd < 0)				// Check if socket creation failed			
 		ft_error(NULL);				// Print an error message with ft_error
 	
@@ -78,8 +78,8 @@ int main(int argc, char **argv)
 	serveraddr.sin_addr.s_addr = htonl(2130706433);		// Set the IP address to localhost. Given in main, is 127.0.0.1 in network bytes; htonl converts a 32bit to network bytes. Instead INADDR_LOOPBACK could be an option
 	serveraddr.sin_port = htons(atoi(argv[1]));		// Set the port number from the command line argument and converts a 16bit to network bytes short
 
-	// bind the newly created server socket to the IP (to the specified address)
-	if ((bind(socketfd, (const struct sockaddr *) &serveraddr, sizeof(serveraddr))) < 0)
+	// bind the newly created server socket to the IP (to the specified address)/ bind a name to a socket
+	if ((bind(socketfd, (const struct sockaddr *) &serveraddr, sizeof(serveraddr))) < 0)	// socketfd: Specifies the file descriptor of the socket to be bound; Points to a sockaddr structure containing the address to be bound to the socket; length of the sockaddr structure
 		ft_error(NULL);		// if binding fails: Print an error message with ft_error
 
 	// Putting the socket into listening mode, to listen for incoming connections. Now its waiting for a client to connect
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 		// select(): can only monitor filedescriptors lower than whats specified by fdMax + 1
 		// readfds and writefds: are fildescriptor sets that contain the fildescriptors that being monitored to check if they are ready for the corresponding action (reading or writing)
 		// returns -1 on error or the number of fds that are in the fds-sets and are performing an operation (read,write or execption)
-		if (select(fdMax + 1, &readFds, &writeFds, NULL, NULL) < 0)
+		if (select(fdMax + 1, &readFds, &writeFds, NULL, NULL) < 0)	// fdMax + 1: range of file descriptors to be tested; &readFds: on input specifies the file descriptors to be checked for being ready to read, and on output indicates which file descriptors are ready to read; same for &writeFds; 
 			continue;		// if select() fails: jumps directly to while(1), so no break, but the input is ignored. 
 		
 		// Check each socket for activity
@@ -125,10 +125,10 @@ int main(int argc, char **argv)
 			// when its not sockfd but another client
 			if (FD_ISSET(fdI, &readFds) && fdI != socketfd)	// (if the if before does not apply: if the activity is not on the server socket)
 			{
-				// Data received from a client
+				// Receive a message from a connected socket (Data received from a client)
 				// recv(): reads data from a socket and returns the number of bytes read or -1 on error or 0 if connections is closed
-				// 65536: common max for packet size of network protocols
-				int res = recv(fdI, bufferRead, 65536, 0);		// Receive data from the client (Instead 65536 sizeof(bufferRead) - 1 could be an option)
+				// 65536: common max for packet size of network protocols (Instead 65536 sizeof(bufferRead) - 1 could be an option)
+				int res = recv(fdI, bufferRead, 65536, 0);	// fdI: Specifies the socket file descriptor; Points to a buffer where the message should be stored; Specifies the length in bytes of the buffer pointed to by the buffer argument; Specifies the type of message reception
 				if (res <= 0)
 				{
 					// Client disconnected
