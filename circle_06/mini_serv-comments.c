@@ -91,8 +91,10 @@ int main(int argc, char **argv)
 	{
 		// Wait for activity on the sockets
 		readFds = writeFds = active;				// Copy the active sockets set for use with select()
+
+		// select(): indicates which of the specified file descriptors is ready for reading, ready for writing, or has an error condition pending
 		// select(highest possible number of fds to check, set of fds that could be possibly reading, set of fds that could possibly be writing, NULL, NULL)
-		// select(): can only monitor filedescriptors lower than whats specified by fdMax + 1
+		// select() can only monitor filedescriptors lower than whats specified by fdMax + 1
 		// readfds and writefds: are fildescriptor sets that contain the fildescriptors that being monitored to check if they are ready for the corresponding action (reading or writing)
 		// returns -1 on error or the number of fds that are in the fds-sets and are performing an operation (read,write or execption)
 		if (select(fdMax + 1, &readFds, &writeFds, NULL, NULL) < 0)	// fdMax + 1: range of file descriptors to be tested; &readFds: on input specifies the file descriptors to be checked for being ready to read, and on output indicates which file descriptors are ready to read; same for &writeFds; 
