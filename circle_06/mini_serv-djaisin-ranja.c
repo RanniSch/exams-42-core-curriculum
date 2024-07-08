@@ -41,12 +41,8 @@ int main(int argc, char **argv)
 {
 	socklen_t len;
     if (argc != 2)
-    {
         ft_error("Wrong number of arguments\n");
-    }
-        
-
-	// socket create and verification 
+         
 	socketfd = socket(AF_INET, SOCK_STREAM, 0); 
 	if (socketfd == -1)
 		ft_error(NULL);
@@ -109,12 +105,12 @@ int main(int argc, char **argv)
 							clients[fdI].msg[j] = '\0';
 							sprintf(bufferWrite, "client %d: %s\n", clients[fdI].id, clients[fdI].msg);
 							send_all(fdI);
-							bzero(bufferWrite, strlen(bufferWrite));
+							bzero(&bufferWrite, strlen(bufferWrite));
 							bzero(&clients[fdI].msg, strlen(clients[fdI].msg));
 							j = -1;
 						}
 					}
-					bzero(bufferRead, sizeof(bufferRead));
+					bzero(&bufferRead, sizeof(bufferRead));
 				}
 			}
 		}
