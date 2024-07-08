@@ -10,21 +10,21 @@
 typedef struct s_client
 {
     int id;
-    char msg[696968];
+    char msg[999999];
 }               t_client;
 
 t_client clients[128];
 int socketfd = 0, connfd = 0, fdMax = 0, idNext = 0;
 fd_set readFds, writeFds, active;
 struct sockaddr_in serveraddr, cli;
-char bufferRead[696968], bufferWrite[696968];
+char bufferRead[999999], bufferWrite[999999];
 
 void ft_error(char *string)
 {
 	if (string)
 		write(2, string, strlen(string));
 	else
-    	write(2, "Fatal error\n", 13);
+    	write(2, "Fatal error\n", 12); // or 13? or strlen("Fatal error\n")
     exit(1);
 }
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     FD_ZERO(&active);
     FD_SET(socketfd, &active);
 	
-	while (6969)
+	while (1)
 	{
 		readFds = writeFds = active;
 		if (select(fdMax + 1, &readFds, &writeFds, NULL, NULL) < 0)
@@ -115,4 +115,5 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+	return 0;
 }
