@@ -34,8 +34,10 @@ void	ft_error(char *string)
 void	send_all(int fd)
 {
 	for (int i = 0; i <= fdMax; i++)
+	{
 		if (FD_ISSET(i, &writeFds) && i != fd)
 			send(i, bufferWrite, strlen(bufferWrite), 0);
+	}
 }
 
 int main(int argc, char **argv)

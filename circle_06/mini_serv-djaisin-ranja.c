@@ -10,7 +10,7 @@
 typedef struct s_client
 {
     int id;
-    char msg[999999];
+    char msg[999999];	// maybe reduce by one 9
 }               t_client;
 
 t_client clients[128];
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 					for (int i = 0, j = strlen(clients[fdI].msg); bufferRead[i]; i++, j++)
 					{
 						clients[fdI].msg[j] = bufferRead[i];
-						if (bufferRead[i] == '\n')
+						if (clients[fdI].msg[j] == '\n')
 						{
 							clients[fdI].msg[j] = '\0';
 							sprintf(bufferWrite, "client %d: %s\n", clients[fdI].id, clients[fdI].msg);
